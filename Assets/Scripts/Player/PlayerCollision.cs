@@ -7,27 +7,22 @@ public class PlayerCollision : MonoBehaviour
     [Header("Layers")]
     public LayerMask whatIsGround;
 
-    [Space]
     [Header("Collision")]
     public Transform groundCheck;
     public Transform wallCheck;
     public Transform ledgeCheck;
 
-    [Space]
-    [Header("Collision")]
+    [Header("Stats")]
     public float groundCheckRadius;
     public float wallCheckDistance;
     public float ledgeCheckDistance;
 
     [Space]
+    [HideInInspector] public bool isGrounded;
+    [HideInInspector] public bool isTouchingWall;
+    [HideInInspector] public bool isTouchingLedge;
+    [HideInInspector] public bool ledgeDetected;
     [HideInInspector] public Vector2 ledgePosBot;
-
-    [Space]
-    public bool isGrounded;
-    public bool isTouchingWall;
-    public bool isTouchingLedge;
-    public bool ledgeDetected;
-
 
     // Update is called once per frame
     void Update()

@@ -17,50 +17,64 @@ public class PlayerController : MonoBehaviour
     private Vector2 ledgePos1;
     private Vector2 ledgePos2;
 
-    // Timers
     private float jumpTimer;
     private float turnTimer;
     private float wallJumpTimer;
+
     private int amountOfJumpsLeft;
+    private float dashTimeLeft;
     
     private bool isWalking;
     private bool isWallSliding;
+    private bool isAttemptingToJump;
+    private bool isDashing;
+
     private bool canNormalJump;
     private bool canWallJump;
-    private bool isAttemptingToJump;
-    private bool checkJumpMultiplier;
     private bool canMove;
     private bool canFlip;
-    private bool hasWallJumped;
     private bool canClimbLedge = false;
 
-    [Space]
-    [Header("Stats")]
-    public float movementSpeed = 10.0f;
-    public int amountOfJumps = 1;
-    public float jumpForce = 16.0f;
-    public float movementForceInAir;
-    public float airDragMultiplier = 0.95f;
-    public float wallSlideSpeed;
-    public float variableJumpHeightMultiplier = 0.5f;
-    public float wallJumpForce;
+    private bool checkJumpMultiplier;
+    private bool hasWallJumped;
+    private float lastImgXpos;          // last dashin img
+    private float lastDash = -100f;
+
+    
 
     [Space]
+    [Header("Movement")]
+    public float movementSpeed = 10.0f;
+    public float movementForceInAir;
+    public float airDragMultiplier = 0.95f;
+
+    [Header("Jump")]
+    public int amountOfJumps = 1;
+    public float jumpForce = 16.0f;
+    public float variableJumpHeightMultiplier = 0.5f;       // decrease jump force
+    public float wallJumpForce;
+    public Vector2 wallJumpDirection;               // angle to apply force
+
+    [Header("Slide")]
+    public float wallSlideSpeed;
+
+    [Header("Dash")]
+    public float dashTime;
+    public float dashSpeed;
+    public float dashCooldown;
+    public float distanceBetweenImgs;       // distance between after imgs
+
     [Header("Ledge")]
     public float lefgeClimbXOffset1 = 0.5f;
     public float lefgeClimbYOffset1 = 0f;
     public float lefgeClimbXOffset2 = 0f;
     public float lefgeClimbYOffset2 = 0f;
 
-    [Space]
     [Header("Timers")]
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
     public float wallJumpTimerSet = 0.5f;
-
-    [Space]
-    [Header("Others")]
-    public Vector2 wallJumpDirection;
+    
 
     // Start is called before the first frame update
     void Start()
@@ -83,6 +97,7 @@ public class PlayerController : MonoBehaviour
         CheckIfWallSliding();
         CheckJump();
         CheckLedgeClimb();
+        CheckDash();
     }
 
     private void FixedUpdate()
@@ -93,7 +108,7 @@ public class PlayerController : MonoBehaviour
 
     private void CheckInput()
     {
-        movementInputDirection = Input.GetAxis("Horizontal");
+        movementInputDirection = Input.GetAxisRaw("Horizontal");
 
         if (Input.GetButtonDown("Jump"))
         {
@@ -136,9 +151,14 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * variableJumpHeightMultiplier);
         }
 
+		if (Input.GetButtonDown("Dash"))
+		{
+            if(Time.time >= (lastDash + dashCooldown))
+                AttemptToDash();
+		}
+
+
     }
-
-
 
     private void CheckIfCanJump()           // First check before starting any type of jump
     {
@@ -245,6 +265,44 @@ public class PlayerController : MonoBehaviour
 		}
 	}
 
+    private void AttemptToDash()
+	{
+        isDashing = true;
+        dashTimeLeft = dashTime;
+        lastDash = Time.time;
+
+        PlayerAfterImagePool.Instance.GetFromPool();
+        lastImgXpos = transform.position.x;
+	}
+
+    private void CheckDash()
+	{
+		if (isDashing)
+		{
+            if(dashTimeLeft > 0)
+			{
+                canMove = false;
+                canFlip = false;
+
+                rb.velocity = new Vector2(dashSpeed * facingDirection, rb.velocity.y);
+                dashTimeLeft -= Time.deltaTime;
+
+                if(Mathf.Abs(transform.position.x - lastImgXpos) > distanceBetweenImgs)
+			    {
+                    PlayerAfterImagePool.Instance.GetFromPool();
+                    lastImgXpos = transform.position.x;
+			    }
+			}
+
+            if(dashTimeLeft <= 0 || coll.isTouchingWall)
+			{
+                isDashing = false;
+                canMove = true;
+                canFlip = true;
+			}
+		}
+	}
+
 
     #region Jumps
 
@@ -303,7 +361,7 @@ public class PlayerController : MonoBehaviour
             Flip();
         }
 
-        if (rb.velocity.x >= 0.02 || rb.velocity.x <= -0.02)
+        if (Mathf.Abs(rb.velocity.x) >= 0.01f)
         {
             isWalking = true;
         }
@@ -350,7 +408,6 @@ public class PlayerController : MonoBehaviour
 	{
         canClimbLedge = false;
         transform.position = ledgePos2;
-        Debug.Log(transform.position);
         canMove = true;
         canFlip = true;
         coll.ledgeDetected = false;

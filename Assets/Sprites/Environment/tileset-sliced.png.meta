@@ -1795,8 +1795,8 @@ TextureImporter:
       physicsShape:
       - - {x: -8, y: 8}
         - {x: -8, y: -8}
-        - {x: -2, y: -6}
-        - {x: 5, y: 0}
+        - {x: -2, y: -5}
+        - {x: 4, y: 0}
         - {x: 8, y: 8}
       tessellationDetail: 0
       bones: []
