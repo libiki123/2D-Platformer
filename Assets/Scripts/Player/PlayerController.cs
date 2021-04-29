@@ -23,7 +23,7 @@ public class PlayerController : MonoBehaviour
 
     private int amountOfJumpsLeft;
     private float dashTimeLeft;
-    
+
     private bool isWalking;
     private bool isWallSliding;
     private bool isAttemptingToJump;
@@ -40,9 +40,8 @@ public class PlayerController : MonoBehaviour
     private float lastImgXpos;          // last dashin img
     private float lastDash = -100f;
 
-    
 
-    [Space]
+
     [Header("Movement")]
     public float movementSpeed = 10.0f;
     public float movementForceInAir;
@@ -69,12 +68,12 @@ public class PlayerController : MonoBehaviour
     public float lefgeClimbYOffset1 = 0f;
     public float lefgeClimbXOffset2 = 0f;
     public float lefgeClimbYOffset2 = 0f;
-
+    
     [Header("Timers")]
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
     public float wallJumpTimerSet = 0.5f;
-    
+
 
     // Start is called before the first frame update
     void Start()
@@ -151,11 +150,11 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * variableJumpHeightMultiplier);
         }
 
-		if (Input.GetButtonDown("Dash"))
-		{
-            if(Time.time >= (lastDash + dashCooldown))
+        if (Input.GetButtonDown("Dash"))
+        {
+            if (Time.time >= (lastDash + dashCooldown))
                 AttemptToDash();
-		}
+        }
 
 
     }
@@ -204,7 +203,7 @@ public class PlayerController : MonoBehaviour
             //WallJump
             if (!coll.isGrounded && coll.isTouchingWall && movementInputDirection != 0 && movementInputDirection != facingDirection)
             {
-                
+
                 WallJump();
             }
             else if (coll.isGrounded)
@@ -259,49 +258,49 @@ public class PlayerController : MonoBehaviour
             anim.SetBool("canClimbLedge", canClimbLedge);
         }
 
-		if (canClimbLedge)
-		{
-			transform.position = ledgePos1;
-		}
-	}
+        if (canClimbLedge)
+        {
+            transform.position = ledgePos1;
+        }
+    }
 
     private void AttemptToDash()
-	{
+    {
         isDashing = true;
         dashTimeLeft = dashTime;
         lastDash = Time.time;
 
         PlayerAfterImagePool.Instance.GetFromPool();
         lastImgXpos = transform.position.x;
-	}
+    }
 
     private void CheckDash()
-	{
-		if (isDashing)
-		{
-            if(dashTimeLeft > 0)
-			{
+    {
+        if (isDashing)
+        {
+            if (dashTimeLeft > 0)
+            {
                 canMove = false;
                 canFlip = false;
 
-                rb.velocity = new Vector2(dashSpeed * facingDirection, rb.velocity.y);
+                rb.velocity = new Vector2(dashSpeed * facingDirection, 0);
                 dashTimeLeft -= Time.deltaTime;
 
-                if(Mathf.Abs(transform.position.x - lastImgXpos) > distanceBetweenImgs)
-			    {
+                if (Mathf.Abs(transform.position.x - lastImgXpos) > distanceBetweenImgs)
+                {
                     PlayerAfterImagePool.Instance.GetFromPool();
                     lastImgXpos = transform.position.x;
-			    }
-			}
+                }
+            }
 
-            if(dashTimeLeft <= 0 || coll.isTouchingWall)
-			{
+            if (dashTimeLeft <= 0 || coll.isTouchingWall)
+            {
                 isDashing = false;
                 canMove = true;
                 canFlip = true;
-			}
-		}
-	}
+            }
+        }
+    }
 
 
     #region Jumps
@@ -341,7 +340,7 @@ public class PlayerController : MonoBehaviour
             canMove = true;                 // allow free movement
             canFlip = true;
             hasWallJumped = true;
-            
+
             lastWallJumpDirection = -facingDirection;   // char face opposite of the wall while sliding
 
         }
@@ -349,7 +348,7 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
-  
+
     private void CheckMovementDirection()
     {
         if (isFacingRight && movementInputDirection < 0)
@@ -392,6 +391,27 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
+    #region Set
+    public void EnableFlip()
+    {
+        canFlip = true;
+    }
+
+    public void DisableFlip()
+	{
+        canFlip = false;
+	}
+
+    #endregion
+
+    #region Get
+    public int GetFacingDirection()
+	{
+        return facingDirection;
+	}
+
+    #endregion
 
     #region Animations
     private void Flip()
