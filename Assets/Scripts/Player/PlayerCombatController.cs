@@ -15,19 +15,25 @@ public class PlayerCombatController : MonoBehaviour
 	[SerializeField] private Transform attack1HitboPos;
 	[SerializeField] private float attack1Radius;
 	[SerializeField] private float attack1Damage;
+	[SerializeField] private float stunDamage;
 
 
 	private bool gotInput;
 	private bool isAttacking;
 	private bool isFirstAttack;			
 	private float lastInputTime = Mathf.NegativeInfinity;
-	private float[] attackDetail = new float[2];
+	private AttackDetails attackDetails = new AttackDetails();
 
 	private Animator anim;
+	private PlayerController pc;
+	private PlayerStats ps;
 
 	private void Start()
 	{
 		anim = GetComponent<Animator>();
+		pc = GetComponent<PlayerController>();
+		ps = GetComponent<PlayerStats>();
+
 		anim.SetBool("canAttack", combatEnabled);
 	}
 
@@ -74,12 +80,13 @@ public class PlayerCombatController : MonoBehaviour
 	{
 		Collider2D[] detectedObjects = Physics2D.OverlapCircleAll(attack1HitboPos.position, attack1Radius, whatIsDamageable);
 
-		attackDetail[0] = attack1Damage;
-		attackDetail[1] = transform.position.x;
+		attackDetails.damageAmount = attack1Damage;
+		attackDetails.position = transform.position;
+		attackDetails.stunDamageAmount = stunDamage;
 
 		foreach (Collider2D collier in detectedObjects)
 		{
-			collier.transform.parent.SendMessage("Damage", attackDetail);
+			collier.transform.parent.SendMessage("Damage", attackDetails);
 		}
 	}
 
@@ -90,8 +97,22 @@ public class PlayerCombatController : MonoBehaviour
 		anim.SetBool("attack1", false);
 	}
 
+	private void Damage(AttackDetails attackerDetails) 
+	{
+		if (!pc.GetDashStatus())
+		{
+			int direction = attackerDetails.position.x < transform.position.x ? 1 : -1;
+
+			ps.DecreaseHealth(attackerDetails.damageAmount);
+			pc.Knockback(direction);
+
+		}
+
+	}
+
 	private void OnDrawGizmos()
 	{
 		Gizmos.DrawWireSphere(attack1HitboPos.position, attack1Radius);
 	}
 }
+

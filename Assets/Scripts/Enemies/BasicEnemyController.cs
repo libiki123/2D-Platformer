@@ -9,6 +9,7 @@ public class BasicEnemyController : MonoBehaviour
 	private State cuurentState;
 	private Vector2 movement;
 
+
 	private EnemyCollision coll;
 	private GameObject alive;
 	private Rigidbody2D rbAlive;
@@ -16,8 +17,11 @@ public class BasicEnemyController : MonoBehaviour
 
 	private int facingDirection;
 	private int damageDirection;
-	private float currentHeath;
+	private float currentHealth;
 	private float knockbackStartTime;
+	private float lastTouchDamageTime;
+
+	private AttackDetails attackDetails = new AttackDetails();
 
 	[Header("Stats")]
 	[SerializeField] private float movementSpeed;
@@ -32,6 +36,11 @@ public class BasicEnemyController : MonoBehaviour
 	[SerializeField] private GameObject deathChunkParticle;
 	[SerializeField] private GameObject deathBloodParticle;
 
+	[Header("Damage")]
+	[SerializeField] private float touchDamage;
+	[SerializeField] private float touchDamageCooldown;
+
+
 	private void Start()
 	{
 		coll = GetComponent<EnemyCollision>();
@@ -39,7 +48,7 @@ public class BasicEnemyController : MonoBehaviour
 		rbAlive = alive.GetComponent<Rigidbody2D>();
 		aliveAnim = alive.GetComponent<Animator>();
 
-		currentHeath = maxHealth;
+		currentHealth = maxHealth;
 		facingDirection = 1;
 	}
 
@@ -69,6 +78,8 @@ public class BasicEnemyController : MonoBehaviour
 
 	private void UpdateMovingState()
 	{
+		CheckTouchDamage();
+
 		if (!coll.groundDetected || coll.wallDetected)
 		{
 			Flip();
@@ -133,23 +144,39 @@ public class BasicEnemyController : MonoBehaviour
 
 	//-------------------------- Others --------------------------------//
 
-	private void Damage(float[] attackDetail)
+	private void Damage(AttackDetails attackerDetails)
 	{
-		currentHeath -= attackDetail[0];        // Attack damage is alway in the index [0]
+		currentHealth -= attackerDetails.damageAmount;        // Attack damage is alway in the index [0]
 
-		damageDirection = attackDetail[1] > alive.transform.position.x ? -1 : 1;        // If player X pos > enemy x pos 
+		damageDirection = attackerDetails.position.x > alive.transform.position.x ? -1 : 1;        // If player X pos > enemy x pos 
 
 		Instantiate(hitParticle, alive.transform.position, Quaternion.Euler(0.0f, 0.0f, Random.Range(0.0f, 360f)));
 
-		if(currentHeath > 0.0f)
+		if(currentHealth > 0.0f)
 		{
 			SwitchState(State.Knockback);
 		}
-		else if( currentHeath <= 0.0f)
+		else if( currentHealth <= 0.0f)
 		{
 			SwitchState(State.Dead);
 		}
 
+	}
+
+	private void CheckTouchDamage()
+	{
+		if(Time.time >= lastTouchDamageTime + touchDamageCooldown)
+		{
+			Collider2D hit = coll.IsTouchingPLayer();
+			if (hit != null )
+			{
+				lastTouchDamageTime = Time.time;
+				attackDetails.damageAmount = touchDamage;
+				attackDetails.position = alive.transform.position;
+				hit.SendMessage("Damage", attackDetails);
+			}
+
+		}
 	}
 
 	private void Flip()

@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
     private float jumpTimer;
     private float turnTimer;
     private float wallJumpTimer;
+    private float knockbackStartTime;
 
     private int amountOfJumpsLeft;
     private float dashTimeLeft;
@@ -37,9 +38,11 @@ public class PlayerController : MonoBehaviour
 
     private bool checkJumpMultiplier;
     private bool hasWallJumped;
+    private bool knockBack;
+
     private float lastImgXpos;          // last dashin img
     private float lastDash = -100f;
-
+    
 
 
     [Header("Movement")]
@@ -51,6 +54,8 @@ public class PlayerController : MonoBehaviour
     public int amountOfJumps = 1;
     public float jumpForce = 16.0f;
     public float variableJumpHeightMultiplier = 0.5f;       // decrease jump force
+
+    [Header("Wall Jump")]
     public float wallJumpForce;
     public Vector2 wallJumpDirection;               // angle to apply force
 
@@ -68,11 +73,16 @@ public class PlayerController : MonoBehaviour
     public float lefgeClimbYOffset1 = 0f;
     public float lefgeClimbXOffset2 = 0f;
     public float lefgeClimbYOffset2 = 0f;
-    
+
+    [Header("Knockback")]
+    public float knockbackDuration;
+    public Vector2 knockbackSpeed;
+
     [Header("Timers")]
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
     public float wallJumpTimerSet = 0.5f;
+    
 
 
     // Start is called before the first frame update
@@ -81,6 +91,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         coll = GetComponent<PlayerCollision>();
+
         amountOfJumpsLeft = amountOfJumps;
         wallJumpDirection.Normalize();
     }
@@ -97,6 +108,7 @@ public class PlayerController : MonoBehaviour
         CheckJump();
         CheckLedgeClimb();
         CheckDash();
+        CheckKnockBack();
     }
 
     private void FixedUpdate()
@@ -159,29 +171,6 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    private void CheckIfCanJump()           // First check before starting any type of jump
-    {
-        if (coll.isGrounded && rb.velocity.y <= 0.01f)
-        {
-            amountOfJumpsLeft = amountOfJumps;
-        }
-
-        if (coll.isTouchingWall)
-        {
-            checkJumpMultiplier = false;
-            canWallJump = true;
-        }
-
-        if (amountOfJumpsLeft <= 0)
-        {
-            canNormalJump = false;
-        }
-        else
-        {
-            canNormalJump = true;
-        }
-
-    }
 
     private void CheckIfWallSliding()       // Check whether player currently wall sliding
     {
@@ -195,6 +184,93 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void CheckLedgeClimb()
+    {
+        if (coll.ledgeDetected && !canClimbLedge)
+        {
+            canClimbLedge = true;
+
+            if (isFacingRight)
+            {
+                ledgePos1 = new Vector2(Mathf.Floor(coll.ledgePosBot.x + coll.wallCheckDistance) - lefgeClimbXOffset1, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset1);
+                ledgePos2 = new Vector2(Mathf.Floor(coll.ledgePosBot.x + coll.wallCheckDistance) + lefgeClimbXOffset2, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset2);
+            }
+            else
+            {
+                ledgePos1 = new Vector2(Mathf.Ceil(coll.ledgePosBot.x - coll.wallCheckDistance) + lefgeClimbXOffset1, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset1);
+                ledgePos2 = new Vector2(Mathf.Ceil(coll.ledgePosBot.x - coll.wallCheckDistance) - lefgeClimbXOffset2, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset2);
+            }
+
+            canMove = false;
+            canFlip = false;
+
+            anim.SetBool("canClimbLedge", canClimbLedge);
+        }
+
+        if (canClimbLedge)
+        {
+            transform.position = ledgePos1;
+        }
+    }
+
+	#region Dash
+	private void AttemptToDash()
+    {
+        isDashing = true;
+        dashTimeLeft = dashTime;
+        lastDash = Time.time;
+
+        PlayerAfterImagePool.Instance.GetFromPool();
+        lastImgXpos = transform.position.x;
+    }
+
+    private void CheckDash()
+    {
+        if (isDashing)
+        {
+            if (dashTimeLeft > 0)
+            {
+                canMove = false;
+                canFlip = false;
+
+                rb.velocity = new Vector2(dashSpeed * facingDirection, 0);
+                dashTimeLeft -= Time.deltaTime;
+
+                if (Mathf.Abs(transform.position.x - lastImgXpos) > distanceBetweenImgs)
+                {
+                    PlayerAfterImagePool.Instance.GetFromPool();
+                    lastImgXpos = transform.position.x;
+                }
+            }
+
+            if (dashTimeLeft <= 0 || coll.isTouchingWall)
+            {
+                isDashing = false;
+                canMove = true;
+                canFlip = true;
+            }
+        }
+    }
+
+    #endregion
+
+    #region Jumps
+    private void CheckIfCanJump()           // First check before starting any type of jump
+    {
+        if (coll.isGrounded && rb.velocity.y <= 0.01f)
+        {
+            amountOfJumpsLeft = amountOfJumps;
+        }
+
+        if (coll.isTouchingWall)
+        {
+            checkJumpMultiplier = false;
+            canWallJump = true;
+        }
+
+        canNormalJump = amountOfJumpsLeft <= 0 ? false : true;
+
+    }
 
     private void CheckJump()
     {
@@ -234,79 +310,9 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-
-    private void CheckLedgeClimb()
-    {
-        if (coll.ledgeDetected && !canClimbLedge)
-        {
-            canClimbLedge = true;
-
-            if (isFacingRight)
-            {
-                ledgePos1 = new Vector2(Mathf.Floor(coll.ledgePosBot.x + coll.wallCheckDistance) - lefgeClimbXOffset1, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset1);
-                ledgePos2 = new Vector2(Mathf.Floor(coll.ledgePosBot.x + coll.wallCheckDistance) + lefgeClimbXOffset2, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset2);
-            }
-            else
-            {
-                ledgePos1 = new Vector2(Mathf.Ceil(coll.ledgePosBot.x - coll.wallCheckDistance) + lefgeClimbXOffset1, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset1);
-                ledgePos2 = new Vector2(Mathf.Ceil(coll.ledgePosBot.x - coll.wallCheckDistance) - lefgeClimbXOffset2, Mathf.Floor(coll.ledgePosBot.y) + lefgeClimbYOffset2);
-            }
-
-            canMove = false;
-            canFlip = false;
-
-            anim.SetBool("canClimbLedge", canClimbLedge);
-        }
-
-        if (canClimbLedge)
-        {
-            transform.position = ledgePos1;
-        }
-    }
-
-    private void AttemptToDash()
-    {
-        isDashing = true;
-        dashTimeLeft = dashTime;
-        lastDash = Time.time;
-
-        PlayerAfterImagePool.Instance.GetFromPool();
-        lastImgXpos = transform.position.x;
-    }
-
-    private void CheckDash()
-    {
-        if (isDashing)
-        {
-            if (dashTimeLeft > 0)
-            {
-                canMove = false;
-                canFlip = false;
-
-                rb.velocity = new Vector2(dashSpeed * facingDirection, 0);
-                dashTimeLeft -= Time.deltaTime;
-
-                if (Mathf.Abs(transform.position.x - lastImgXpos) > distanceBetweenImgs)
-                {
-                    PlayerAfterImagePool.Instance.GetFromPool();
-                    lastImgXpos = transform.position.x;
-                }
-            }
-
-            if (dashTimeLeft <= 0 || coll.isTouchingWall)
-            {
-                isDashing = false;
-                canMove = true;
-                canFlip = true;
-            }
-        }
-    }
-
-
-    #region Jumps
-
     private void NormalJump()
     {
+
         if (canNormalJump)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
@@ -348,6 +354,21 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
+    public void Knockback(int dicrection)
+	{
+        knockBack = true;
+        knockbackStartTime = Time.time;
+        rb.velocity = new Vector2(knockbackSpeed.x * dicrection, knockbackSpeed.y);
+	}
+
+    private void CheckKnockBack()
+	{
+        if(Time.time > knockbackStartTime + knockbackDuration && knockBack)
+		{
+            knockBack = false;
+            rb.velocity = new Vector2(0.0f, rb.velocity.y);     // stop the knockback
+		}
+	}
 
     private void CheckMovementDirection()
     {
@@ -360,24 +381,17 @@ public class PlayerController : MonoBehaviour
             Flip();
         }
 
-        if (Mathf.Abs(rb.velocity.x) >= 0.01f)
-        {
-            isWalking = true;
-        }
-        else
-        {
-            isWalking = false;
-        }
+        isWalking = Mathf.Abs(rb.velocity.x) >= 0.01f ? true : false;
     }
 
     private void ApplyMovement()
     {
 
-        if (!coll.isGrounded && !isWallSliding && movementInputDirection == 0)          // If falling
+        if (!coll.isGrounded && !isWallSliding && movementInputDirection == 0 && !knockBack)          // If falling
         {
             rb.velocity = new Vector2(rb.velocity.x * airDragMultiplier, rb.velocity.y);        // restrict movement while falling
         }
-        else if (canMove)
+        else if (canMove && !knockBack)
         {
             rb.velocity = new Vector2(movementSpeed * movementInputDirection, rb.velocity.y);
         }
@@ -411,12 +425,17 @@ public class PlayerController : MonoBehaviour
         return facingDirection;
 	}
 
+    public bool GetDashStatus()
+	{
+        return isDashing;
+	}
+
     #endregion
 
     #region Animations
     private void Flip()
     {
-        if (!isWallSliding && canFlip)
+        if (!isWallSliding && canFlip && !knockBack)
         {
             facingDirection *= -1;
             isFacingRight = !isFacingRight;
