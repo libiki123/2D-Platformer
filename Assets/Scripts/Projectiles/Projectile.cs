@@ -29,6 +29,8 @@ public class Projectile : MonoBehaviour
 
 		xStartPos = transform.position.x;
 		isGravityOn = false;
+
+		Debug.Log(rb.velocity);
 	}
 
 	private void Update()
