@@ -1,6 +1,6 @@
 # 2D-Platformer
 
-![platform](https://img.shields.io/badge/Platform-Unity-yellow.svg)
+![platform](https://img.shields.io/badge/Engine-Unity-yellow.svg)
 ![Language](https://img.shields.io/badge/Language-C%23-orange.svg)
 
 2D platformer with combat
