@@ -7,7 +7,7 @@
 
 ## Features
   
-* Cut The Rope
+* 2D-Platformer
   - State movement
   - Finite State Machine enemy AI
 
